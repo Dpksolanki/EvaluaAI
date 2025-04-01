@@ -29,40 +29,38 @@ export async function signUp(params: SignUpParams) {
   const { uid, name, email } = params;
 
   try {
-    // check if user exists in db
+    // Check if user exists in db
     const userRecord = await db.collection("users").doc(uid).get();
-    if (userRecord.exists)
+    if (userRecord.exists) {
       return {
         success: false,
         message: "User already exists. Please sign in.",
       };
+    }
 
-    // save user to db
+    // Save user to db
     await db.collection("users").doc(uid).set({
       name,
       email,
-      // profileURL,
-      // resumeURL,
     });
 
     return {
       success: true,
       message: "Account created successfully. Please sign in.",
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error creating user:", error);
 
-    // Handle Firebase specific errors
-    if (error.code === "auth/email-already-exists") {
+    if (error instanceof Error) {
       return {
         success: false,
-        message: "This email is already in use",
+        message: error.message || "Failed to create account. Please try again.",
       };
     }
 
     return {
       success: false,
-      message: "Failed to create account. Please try again.",
+      message: "An unexpected error occurred. Please try again.",
     };
   }
 }
@@ -72,22 +70,32 @@ export async function signIn(params: SignInParams) {
 
   try {
     const userRecord = await auth.getUserByEmail(email);
-    if (!userRecord)
+    if (!userRecord) {
       return {
         success: false,
         message: "User does not exist. Create an account.",
       };
+    }
 
     await setSessionCookie(idToken);
-  } catch (error: any) {
-    console.log("");
+    return { success: true, message: "Signed in successfully." };
+  } catch (error: unknown) {
+    console.error("Error signing in:", error);
+
+    if (error instanceof Error) {
+      return {
+        success: false,
+        message: error.message || "Failed to log into account. Please try again.",
+      };
+    }
 
     return {
       success: false,
-      message: "Failed to log into account. Please try again.",
+      message: "An unexpected error occurred. Please try again.",
     };
   }
 }
+
 
 // Sign out user by clearing the session cookie
 export async function signOut() {
